@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 
 // const placesRoutes = require("./routes/placesRoutes");
-// const usersRoutes = require("./routes/usersRoutes");
+const UsersRoutes = require("./routes/UsersRoutes");
 const HttpError = require("./models/HttpError");
 
 // const url =
@@ -12,9 +12,7 @@ const app = express();
 
 app.use(bodyParser.json()); // for handling request from client (req.body)
 
-// app.use("/api/places", placesRoutes); // for handling places route
-
-// app.use("/api/users", usersRoutes); // for handling users route
+app.use("/users", UsersRoutes); // for handling users route
 
 app.use((req, res, next) => {
   // for handling unsupported route
