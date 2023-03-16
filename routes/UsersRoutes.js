@@ -7,25 +7,18 @@ const router = express.Router();
 
 router.get("/", UsersControllers.getUsers);
 
+router.post("/login", UsersControllers.login);
+
 router.post(
   "/create",
   [
     check("name").notEmpty(),
     check("email").normalizeEmail().isEmail(),
     check("password").isLength({ min: 6 }),
+    check("rolesId").notEmpty(),
+    check("creatorRoles").notEmpty(),
   ],
   UsersControllers.createUser
-);
-
-router.post("/login", UsersControllers.login);
-
-router.delete(
-  "/delete",
-  [
-    check("email").normalizeEmail().isEmail(),
-    check("password").isLength({ min: 6 }),
-  ],
-  UsersControllers.deleteUser
 );
 
 router.put(
@@ -33,8 +26,19 @@ router.put(
   [
     check("email").normalizeEmail().isEmail(),
     check("password").isLength({ min: 6 }),
+    check("updaterRoles").notEmpty(),
   ],
   UsersControllers.updateUser
+);
+
+router.delete(
+  "/delete",
+  [
+    check("email").normalizeEmail().isEmail(),
+    check("password").isLength({ min: 6 }),
+    check("deleterRoles").notEmpty(),
+  ],
+  UsersControllers.deleteUser
 );
 
 module.exports = router;
