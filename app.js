@@ -1,12 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 
-// const placesRoutes = require("./routes/placesRoutes");
 const UsersRoutes = require("./routes/UsersRoutes");
 const HttpError = require("./models/HttpError");
-
-// const url =
-//   "mongodb+srv://taququr:d4OPQ5Zd6vMAN9Qn@cluster0.v7iaije.mongodb.net/mern_bc?retryWrites=true&w=majority";
 
 const app = express();
 

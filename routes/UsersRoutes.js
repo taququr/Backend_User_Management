@@ -8,24 +8,33 @@ const router = express.Router();
 router.get("/", UsersControllers.getUsers);
 
 router.post(
-  "/signup",
+  "/create",
   [
     check("name").notEmpty(),
     check("email").normalizeEmail().isEmail(),
     check("password").isLength({ min: 6 }),
   ],
-  UsersControllers.signup
+  UsersControllers.createUser
 );
 
 router.post("/login", UsersControllers.login);
 
 router.delete(
-  "/delete/:userId",
+  "/delete",
   [
     check("email").normalizeEmail().isEmail(),
     check("password").isLength({ min: 6 }),
   ],
   UsersControllers.deleteUser
+);
+
+router.put(
+  "/update",
+  [
+    check("email").normalizeEmail().isEmail(),
+    check("password").isLength({ min: 6 }),
+  ],
+  UsersControllers.updateUser
 );
 
 module.exports = router;

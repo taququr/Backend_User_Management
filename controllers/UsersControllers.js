@@ -2,6 +2,8 @@ const { v4: uuid } = require("uuid");
 const { validationResult } = require("express-validator");
 
 const HttpError = require("../models/HttpError");
+// const { connection } = require("../models/MysqlConnection");
+const mysql = require("mysql2/promise");
 
 let DUMMY_USERS = [
   {
@@ -12,81 +14,172 @@ let DUMMY_USERS = [
   },
 ];
 
-const getUsers = (req, res, next) => {
+const getUsers = async (req, res, next) => {
+  const connection = await mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "0000",
+    database: "backend_user_management",
+  });
+
+  if (!connection) {
+    return next(new HttpError(err), 422);
+  }
+
+  const [rows, fields] = await connection.query("select * from users");
+
+  if (!rows) {
+    res.status(404);
+    res.send({ message: "There's no user in database" });
+  }
+
   res.status(200);
-  res.json({ user: DUMMY_USERS });
+  res.send({ data: rows });
+  connection.destroy();
 };
 
-const signup = (req, res, next) => {
+const createUser = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return next(new HttpError("Invalid inputs, please check your data"), 422);
   }
 
-  const { name, email, password } = req.body;
+  const connection = await mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "0000",
+    database: "backend_user_management",
+  });
 
-  const identifiedUser = DUMMY_USERS.find((user) => user.email === email);
-  if (identifiedUser) {
+  if (!connection) {
+    return next(new HttpError(err), 422);
+  }
+
+  const { name, email, password } = req.body;
+  const [emailFound] = await connection.execute(
+    "select * from users where email = ?",
+    [email]
+  );
+
+  if (emailFound.length > 0) {
     return next(
-      new HttpError("Could not create user, email already exists", 422)
+      new HttpError("Could not create user, email already exists"),
+      422
     );
   }
 
-  const createdUser = {
-    id: uuid(),
-    name,
-    email,
-    password,
-  };
+  const [rows] = await connection.execute(
+    "INSERT INTO users(name, email, password) values(?, ?, ?)",
+    [name, email, password]
+  );
 
-  DUMMY_USERS.push(createdUser);
+  if (rows.length === 0) {
+    return next(new HttpError(err, 422));
+  }
 
   res.status(201);
-  res.json({ user: createdUser });
+  res.send({ message: "Successfully created", data: rows });
+  connection.destroy();
 };
 
-const login = (req, res, next) => {
-  const { email, password } = req.body;
+const updateUser = async (req, res, next) => {
+  const connection = await mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "0000",
+    database: "backend_user_management",
+  });
 
-  const identifiedUser = DUMMY_USERS.find((user) => user.email === email);
-  if (!identifiedUser || identifiedUser.password !== password) {
-    return next(
-      new HttpError(
-        "Could not identify user, credential seems to be wrong",
-        401
-      )
-    );
+  const { email, password, newName, newEmail, newPassword } = req.body;
+
+  if (!newName && !newEmail && !newPassword) {
+    return next(new HttpError("Please insert valid data"), 500);
   }
 
-  res.json({ message: "Logged in" });
+  const [emailFound] = await connection.execute(
+    "select * from users where email = ?",
+    [email]
+  );
+
+  if (emailFound.length <= 0) {
+    return next(new HttpError("User not found"), 422);
+  } else if (emailFound[0].password !== password) {
+    return next(new HttpError("Credential seems to be wrong"), 500);
+  }
+
+  const [updatedUser] = await connection.execute(
+    "update users set name = ?, email = ?, password = ? where email = ?",
+    [
+      newName ? newName : emailFound[0].name,
+      newEmail ? newEmail : emailFound[0].email,
+      newPassword ? newPassword : emailFound[0].password,
+      email,
+    ]
+  );
+
+  if (updatedUser.length <= 0) {
+    return next(new HttpError("There's seems to be something wrong"), 500);
+  }
+
+  res.json({ message: "Successfully updated", data: updatedUser });
+  connection.destroy();
 };
 
-const deleteUser = (req, res, next) => {
-  const { email, password } = req.body;
-  const { userId } = req.params;
+const deleteUser = async (req, res, next) => {
+  const connection = await mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "0000",
+    database: "backend_user_management",
+  });
 
-  const identifiedUserEmail = DUMMY_USERS.find((user) => user.email === email);
-  const identifiedUserId = DUMMY_USERS.find((user) => user.id === userId);
-  if (!identifiedUserId) {
-    return next(new HttpError("Could not find user with that id"), 404);
-  } else if (
-    !identifiedUserEmail ||
-    identifiedUserEmail.password !== password
-  ) {
-    return next(
-      new HttpError(
-        "Could not identify user, credential seems to be wrong",
-        401
-      )
-    );
+  const { email, password } = req.body;
+
+  const [emailFound] = await connection.execute(
+    "select * from users where email = ?",
+    [email]
+  );
+
+  if (emailFound.length <= 0) {
+    return next(new HttpError("User not found"), 422);
+  } else if (emailFound[0].password !== password) {
+    return next(new HttpError("Credential seems to be wrong"), 500);
   }
 
-  DUMMY_USERS = DUMMY_USERS.filter((user) => user.id === userId);
+  const [userDeleted] = await connection.execute(
+    "delete from users where email = ?",
+    [email]
+  );
 
-  res.json({ message: "User deleted" });
+  res.json({ message: "User deleted", data: userDeleted });
+  connection.destroy();
+};
+
+const login = async (req, res, next) => {
+  const { email, password } = req.body;
+
+  const connection = await mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "0000",
+    database: "backend_user_management",
+  });
+
+  const [emailFound] = await connection.execute(
+    "select * from users where email = ?",
+    [email]
+  );
+
+  if (emailFound.length === 0 || emailFound[0].password !== password) {
+    return next(new HttpError("Credential seems to be wrong"), 404);
+  }
+
+  res.send({ message: "Logged in" });
+  connection.destroy();
 };
 
 exports.getUsers = getUsers;
-exports.signup = signup;
-exports.login = login;
+exports.createUser = createUser;
+exports.updateUser = updateUser;
 exports.deleteUser = deleteUser;
+exports.login = login;
